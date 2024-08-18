@@ -1,383 +1,262 @@
 <?php
 
+declare(strict_types=1);
+
 /**
  * Class Regex
  * A fluent interface for building regular expressions.
+ *
+ * Example usage:
+ * $regex = Regex::create()
+ *     ->literal('Hello')
+ *     ->whitespace()
+ *     ->word()
+ *     ->endOfString()
+ *     ->getRegex();
  */
 class Regex
 {
-    private $pattern = '';
-    private $modifiers = '';
+    private string $pattern = '';
 
     /**
      * Creates a new Regex instance.
      *
      * @return self
      */
-    public static function create()
+    public static function create(): self
     {
         return new self();
     }
 
-    // Literal String
-    public function literal($text)
+    /**
+     * Adds a literal string to the pattern.
+     * Special characters are automatically escaped.
+     *
+     * @param string $text
+     * @return self
+     */
+    public function literal(string $text): self
     {
         $this->pattern .= preg_quote($text, '/');
         return $this;
     }
 
-    // Whitespace
-    public function whitespace()
+    /**
+     * Adds a whitespace character to the pattern.
+     *
+     * @return self
+     */
+    public function whitespace(): self
     {
         $this->pattern .= '\s';
         return $this;
     }
 
-    public function nonWhitespace()
+    /**
+     * Adds a digit to the pattern.
+     *
+     * @param int $count
+     * @return self
+     */
+    public function digit(int $count = 1): self
+    {
+        $this->pattern .= '\d';
+        if ($count > 1) {
+            $this->pattern .= '{' . $count . '}';
+        }
+        return $this;
+    }
+
+    /**
+     * Adds a letter to the pattern.
+     *
+     * @param int $count
+     * @return self
+     */
+    public function letter(int $count = 1): self
+    {
+        $this->pattern .= '[A-Za-z]';
+        if ($count > 1) {
+            $this->pattern .= '{' . $count . '}';
+        }
+        return $this;
+    }
+
+    /**
+     * Adds a non-whitespace character to the pattern.
+     *
+     * @return self
+     */
+    public function nonWhitespace(): self
     {
         $this->pattern .= '\S';
         return $this;
     }
 
-    // Digits
-    public function digit($digits = 1)
+    /**
+     * Starts a named capture group.
+     *
+     * @param string $name
+     * @return self
+     */
+    public function capture(string $name): self
     {
-        if (!is_int($digits) || $digits <= 0) {
-            throw new InvalidArgumentException("The 'digits' parameter must be a positive integer.");
-        }
-        if ($digits == 1) {
-            $this->pattern .= '\d';
-        } else {
-            $this->pattern .= '\d{' . $digits . '}';
-        }
+        $this->pattern .= '(?P<' . $name . '>';
         return $this;
     }
 
-    public function nonDigit()
+    /**
+     * Ends a capture group.
+     *
+     * @return self
+     */
+    public function endCapture(): self
     {
-        $this->pattern .= '\D';
+        $this->pattern .= ')';
         return $this;
     }
 
-    // Letters
-    public function letter($count = 1)
+    /**
+     * Adds an alternation (either/or) to the pattern.
+     *
+     * @param string ...$options
+     * @return self
+     */
+    public function either(string ...$options): self
     {
-        $this->pattern .= '[A-Za-z]{' . $count . '}';
+        $this->pattern .= '(' . implode('|', array_map(fn($option) => preg_quote($option, '/'), $options)) . ')';
         return $this;
     }
 
-    public function letters()
-    {
-        $this->pattern .= '[A-Za-z]+';
-        return $this;
-    }
-    // Letter Case Methods
-    public function uppercaseLetters($count = 1)
-    {
-        $this->pattern .= '[A-Z]{' . $count . '}';
-        return $this;
-    }
-
-    public function lowercaseLetters($count = 1)
-    {
-        $this->pattern .= '[a-z]{' . $count . '}';
-        return $this;
-    }
-
-    public function uppercaseLettersAny()
-    {
-        $this->pattern .= '[A-Z]+';
-        return $this;
-    }
-
-    public function lowercaseLettersAny()
-    {
-        $this->pattern .= '[a-z]+';
-        return $this;
-    }
-
-    public function wordStartsUppercase()
-    {
-        $this->pattern .= '[A-Z][a-z]+';
-        return $this;
-    }
-
-    // Word Characters
-    public function word()
-    {
-        $this->pattern .= '\w+';
-        return $this;
-    }
-
-    public function nonWord()
-    {
-        $this->pattern .= '\W+';
-        return $this;
-    }
-
-    // Special Characters
-    public function tab()
-    {
-        $this->pattern .= '\t';
-        return $this;
-    }
-
-    public function carriageReturn()
-    {
-        $this->pattern .= '\r';
-        return $this;
-    }
-
-    public function newLine()
-    {
-        $this->pattern .= '\n';
-        return $this;
-    }
-
-    public function escape($char)
-    {
-        $this->pattern .= '\\' . $char;
-        return $this;
-    }
-
-    // Anchors
-    public function beginLine()
-    {
-        // Matches the start of a line (equivalent to '^')
-        $this->pattern .= '^';
-        return $this;
-    }
-
-    public function endLine()
+    /**
+     * Adds an end-of-string anchor to the pattern.
+     *
+     * @return self
+     */
+    public function endOfString(): self
     {
         $this->pattern .= '$';
         return $this;
     }
 
-    public function startOfString()
+    /**
+     * Adds a quantifier for at least one occurrence.
+     *
+     * @return self
+     */
+    public function atLeastOne(): self
     {
-        $this->pattern .= '^';
+        $this->pattern .= '+';
         return $this;
     }
 
-    public function endOfString()
+    /**
+     * Adds a quantifier for zero or more occurrences.
+     *
+     * @return self
+     */
+    public function anyTimes(): self
     {
-        $this->pattern .= '$';
+        $this->pattern .= '*';
         return $this;
     }
 
-    // Word Boundary
-    public function wordBoundary()
+    /**
+     * Adds a quantifier for an optional occurrence.
+     *
+     * @return self
+     */
+    public function optional(): self
+    {
+        $this->pattern .= '?';
+        return $this;
+    }
+
+    /**
+     * Adds a pattern for any character (zero or more).
+     *
+     * @return self
+     */
+    public function anything(): self
+    {
+        $this->pattern .= '.*';
+        return $this;
+    }
+
+    /**
+     * Adds a lazy quantifier.
+     *
+     * @return self
+     */
+    public function lazy(): self
+    {
+        $this->pattern .= '?';
+        return $this;
+    }
+
+    /**
+     * Adds a word boundary to the pattern.
+     *
+     * @return self
+     */
+    public function wordBoundary(): self
     {
         $this->pattern .= '\b';
         return $this;
     }
 
-    // Quantifiers
-    public function optional()
-    {
-        // Matches 0 or 1 of the preceding token
-        $this->pattern .= '?';
-        return $this;
-    }
-
-    public function oneOrMore()
-    {
-        $this->pattern .= '+';
-        return $this;
-    }
-
-    public function zeroOrMore()
-    {
-        $this->pattern .= '*';
-        return $this;
-    }
-
-    public function atLeastOne()
-    {
-        $this->pattern .= '+';
-        return $this;
-    }
-
-    public function anyTimes()
-    {
-        $this->pattern .= '*';
-        return $this;
-    }
-
-    public function exactly($n)
-    {
-        $this->pattern .= '{' . $n . '}';
-        return $this;
-    }
-
-    public function atLeast($n)
-    {
-        $this->pattern .= '{' . $n . ',}';
-        return $this;
-    }
-
-    public function between($min, $max)
-    {
-        $this->pattern .= '{' . $min . ',' . $max . '}';
-        return $this;
-    }
-
-    public function lazy()
-    {
-        $this->pattern .= '?';
-        return $this;
-    }
-
-    public function times($n)
-    {
-        $this->pattern .= '{' . $n . '}';
-        return $this;
-    }
-
-    // Character Class Shortcuts
-    public function anyChar()
-    {
-        // Matches any character (equivalent to '.') except newline
-        $this->pattern .= '.';
-        return $this;
-    }
-
-    public function notNewline()
-    {
-        // Matches any character except a newline (equivalent to '.')
-        $this->pattern .= '.';
-        return $this;
-    }
-
-    // Character Sets
-    public function chars($chars)
-    {
-        $this->pattern .= '[' . $chars . ']';
-        return $this;
-    }
-
-    public function notChars($chars)
-    {
-        $this->pattern .= '[^' . $chars . ']';
-        return $this;
-    }
-
-    // Groupings
-    public function capture($name)
-    {
-        $this->pattern .= '(?P<' . $name . '>';
-        return $this;
-    }
-
-    public function endCapture()
-    {
-        $this->pattern .= ')';
-        return $this;
-    }
-
-    public function captureGroup($name)
-    {
-        $this->pattern .= '(?P<' . $name . '>';
-        return $this;
-    }
-    public function startCaptureGroup($name)
-    {
-        $this->pattern .= '(?P<' . $name . '>';
-        return $this;
-    }
-    public function endCaptureGroup()
-    {
-        $this->pattern .= ')';
-        return $this;
-    }
-
-    public function nonCaptureGroup($pattern)
-    {
-        $this->pattern .= '(?:' . $pattern . ')';
-        return $this;
-    }
-
-    public function group($pattern)
-    {
-        $this->pattern .= '(?:' . $pattern . ')';
-        return $this;
-    }
-
-    // Lookarounds
-    public function after($pattern)
-    {
-        $this->pattern .= '(?=' . preg_quote($pattern, '/') . ')';
-        return $this;
-    }
-
-    public function before($pattern)
+    /**
+     * Adds a lookbehind assertion to the pattern.
+     *
+     * @param string $pattern
+     * @return self
+     */
+    public function lookBehind(string $pattern): self
     {
         $this->pattern .= '(?<=' . preg_quote($pattern, '/') . ')';
         return $this;
     }
 
-    public function notAfter($pattern)
+    /**
+     * Adds a word character to the pattern.
+     *
+     * @return self
+     */
+    public function word(): self
     {
-        $this->pattern .= '(?!' . preg_quote($pattern, '/') . ')';
+        $this->pattern .= '\w';
         return $this;
     }
 
-    public function notBefore($pattern)
+    /**
+     * Returns the complete regex pattern.
+     *
+     * @return string
+     */
+    public function getRegex(): string
     {
-        $this->pattern .= '(?<!' . preg_quote($pattern, '/') . ')';
+        return '/' . $this->pattern . '/';
+    }
+
+    /**
+     * Resets the pattern to an empty string.
+     *
+     * @return self
+     */
+    public function reset(): self
+    {
+        $this->pattern = '';
         return $this;
     }
 
-    public function lookBehind($pattern)
+    /**
+     * Compiles the regex pattern for direct use.
+     *
+     * @return \Closure
+     */
+    public function compile(): \Closure
     {
-        $this->pattern .= '(?<=' . preg_quote($pattern, '/') . ')';
-        return $this;
-    }
-
-    public function lookAhead($pattern)
-    {
-        $this->pattern .= '(?=' . preg_quote($pattern, '/') . ')';
-        return $this;
-    }
-
-    // Backreferences
-    public function backReference($group)
-    {
-        $this->pattern .= '\g{' . $group . '}';
-        return $this;
-    }
-
-    // Atomic Groups
-    public function atomicGroup($pattern)
-    {
-        $this->pattern .= '(?>' . $pattern . ')';
-        return $this;
-    }
-
-    // Alternation
-    public function either(...$options)
-    {
-        $this->pattern .= '(' . implode('|', array_map('preg_quote', $options, array_fill(0, count($options), '/'))) . ')';
-        return $this;
-    }
-
-    // Modifiers
-    public function caseInsensitive()
-    {
-        $this->modifiers .= 'i';
-        return $this;
-    }
-
-    public function multiLine()
-    {
-        $this->modifiers .= 'm';
-        return $this;
-    }
-
-    // Final Regex
-    public function getRegex()
-    {
-        return '/' . $this->pattern . '/' . $this->modifiers;
+        $regex = $this->getRegex();
+        return fn(string $subject): bool => (bool)preg_match($regex, $subject);
     }
 }
